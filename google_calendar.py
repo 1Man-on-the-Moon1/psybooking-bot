@@ -53,28 +53,15 @@ class GoogleCalendarClient:
             
             if not self.creds:
                 # Требуется новая авторизация
-                credentials_file = CREDENTIALS_JSON_PATH
-                
-                # Попробовать загрузить credentials из переменной окружения
-                if os.getenv('GOOGLE_CREDENTIALS_JSON'):
-                    try:
-                        credentials_data = json.loads(os.getenv('GOOGLE_CREDENTIALS_JSON'))
-                        os.makedirs(os.path.dirname(credentials_file) or '.', exist_ok=True)
-                        with open(credentials_file, 'w') as f:
-                            json.dump(credentials_data, f)
-                    except Exception as e:
-                        print(f"Ошибка загрузки credentials из переменной окружения: {e}")
-                
-                if not os.path.exists(credentials_file):
-                    print("ВНИМАНИЕ: Файл credentials.json не найден!")
-                    print("Создайте OAuth 2.0 credentials в Google Cloud Console")
-                    print("и сохраните как credentials.json")
-                    print("Или установите переменную окружения GOOGLE_CREDENTIALS_JSON")
-                    return
-                
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    credentials_file, SCOPES)
-                self.creds = flow.run_local_server(port=0)
+                # НЕ ЗАПУСКАЕМ интерактивную авторизацию на сервере без GUI
+                print("⚠️ Google Calendar не авторизован")
+                print("Для авторизации Google Calendar:")
+                print("1. Запустите auth_google.py локально")
+                print("2. Загрузите token.pickle на сервер")
+                print("3. Или установите переменную GOOGLE_TOKEN_PICKLE_BASE64")
+                print("")
+                print("Бот будет работать БЕЗ Google Calendar")
+                return
             
             # Сохранить credentials
             os.makedirs(os.path.dirname(TOKEN_PICKLE_PATH), exist_ok=True)
