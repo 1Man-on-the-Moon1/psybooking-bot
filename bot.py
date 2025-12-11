@@ -18,7 +18,15 @@ from telegram.ext import (
 import config
 from database import Database
 from scheduler import Scheduler
-from google_calendar import get_calendar_client
+
+# Google Calendar - опционально
+try:
+    from google_calendar import get_calendar_client
+    GOOGLE_CALENDAR_ENABLED = True
+except Exception as e:
+    logger.warning(f"Google Calendar недоступен: {e}")
+    GOOGLE_CALENDAR_ENABLED = False
+    get_calendar_client = None
 
 # Настройка логирования
 logging.basicConfig(
@@ -33,7 +41,21 @@ SELECTING_DATE, SELECTING_SLOT = range(2)
 # Инициализация
 db = Database()
 scheduler = Scheduler(db)
-calendar_client = get_calendar_client()
+
+# Инициализация Google Calendar (если доступен)
+if GOOGLE_CALENDAR_ENABLED:
+    try:
+        calendar_client = get_calendar_client()
+        if not calendar_client.is_authenticated():
+            logger.warning("Google Calendar не авторизован")
+            GOOGLE_CALENDAR_ENABLED = False
+            calendar_client = None
+    except Exception as e:
+        logger.warning(f"Ошибка инициализации Google Calendar: {e}")
+        GOOGLE_CALENDAR_ENABLED = False
+        calendar_client = None
+else:
+    calendar_client = None
 
 
 # === Вспомогательные функции ===
@@ -314,7 +336,7 @@ async def slot_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     # Создать событие в Google Calendar
-    if not calendar_client.is_authenticated():
+    if not GOOGLE_CALENDAR_ENABLED or not calendar_client or not calendar_client.is_authenticated():
         # Календарь не подключен - просто подтвердить запись
         db.update_booking_with_google_event(booking_id, '', '')
         
