@@ -3,6 +3,8 @@
 """
 import os
 import pickle
+import json
+import base64
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from google.auth.transport.requests import Request
@@ -31,6 +33,14 @@ class GoogleCalendarClient:
         if os.path.exists(TOKEN_PICKLE_PATH):
             with open(TOKEN_PICKLE_PATH, 'rb') as token:
                 self.creds = pickle.load(token)
+        # Или из переменной окружения (для Bothost)
+        elif os.getenv('GOOGLE_TOKEN_PICKLE_BASE64'):
+            try:
+                token_data = base64.b64decode(os.getenv('GOOGLE_TOKEN_PICKLE_BASE64'))
+                self.creds = pickle.loads(token_data)
+            except Exception as e:
+                print(f"Ошибка загрузки токена из переменной окружения: {e}")
+                self.creds = None
         
         # Если нет валидных credentials, получить новые
         if not self.creds or not self.creds.valid:
@@ -43,14 +53,27 @@ class GoogleCalendarClient:
             
             if not self.creds:
                 # Требуется новая авторизация
-                if not os.path.exists(CREDENTIALS_JSON_PATH):
+                credentials_file = CREDENTIALS_JSON_PATH
+                
+                # Попробовать загрузить credentials из переменной окружения
+                if os.getenv('GOOGLE_CREDENTIALS_JSON'):
+                    try:
+                        credentials_data = json.loads(os.getenv('GOOGLE_CREDENTIALS_JSON'))
+                        os.makedirs(os.path.dirname(credentials_file) or '.', exist_ok=True)
+                        with open(credentials_file, 'w') as f:
+                            json.dump(credentials_data, f)
+                    except Exception as e:
+                        print(f"Ошибка загрузки credentials из переменной окружения: {e}")
+                
+                if not os.path.exists(credentials_file):
                     print("ВНИМАНИЕ: Файл credentials.json не найден!")
                     print("Создайте OAuth 2.0 credentials в Google Cloud Console")
                     print("и сохраните как credentials.json")
+                    print("Или установите переменную окружения GOOGLE_CREDENTIALS_JSON")
                     return
                 
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    CREDENTIALS_JSON_PATH, SCOPES)
+                    credentials_file, SCOPES)
                 self.creds = flow.run_local_server(port=0)
             
             # Сохранить credentials
